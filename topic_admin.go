@@ -66,9 +66,32 @@ func cycleBrokers(broker []int32, lastIter int32) int32 {
 	}
 }
 
-func (kz *Kazoo) RemoveTopicFromBroker(name string, validBrokers []int32, removalBroker int32) error {
+func contains(slice []int32, value int32) bool{
+	for _,v := range slice {
+		if v == value {
+			return true
+		}
+	}
+	return false
+}
+
+func getValidBroker(brokerList []int32, removalBrokers []int32) []int32 {
+	var retVal []int32
+	for _, broker := range brokerList {
+		if !contains(removalBrokers, broker) {
+			retVal = append(retVal, broker)
+		}
+	}
+
+	return retVal
+}
+
+func (kz *Kazoo) RemoveTopicFromBrokers(name string, removalBroker []int32) error {
 	topic := kz.Topic(name)
 	var roundRobinBroker int32
+
+	brokers, err := kz.brokerIDList()
+	validBrokers := getValidBroker(brokers, removalBroker)
 
 
 	currentPartitions, err := topic.Partitions()
@@ -80,7 +103,7 @@ func (kz *Kazoo) RemoveTopicFromBroker(name string, validBrokers []int32, remova
 		newReplicas := make([]int32, len(replicas))
 		for i, replica := range replicas {
 
-			if replica == removalBroker {
+			if contains(removalBroker, replica) {
 				//reassign Broker via RoundRobin.
 				newReplicas[i] = roundRobinBroker
 				roundRobinBroker = cycleBrokers(validBrokers, roundRobinBroker)
