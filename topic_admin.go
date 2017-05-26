@@ -58,6 +58,58 @@ func (kz *Kazoo) CreateTopic(name string, partitionCount int, replicationFactor 
 	return nil
 }
 
+func cycleBrokers(broker []int32, lastIter int32) int32 {
+	if int(lastIter+1) == len(broker) {
+		return 0
+	} else {
+		return lastIter + 1
+	}
+}
+
+func (kz *Kazoo) RemoveTopicFromBroker(name string, validBrokers []int32, removalBroker int32) error {
+	topic := kz.Topic(name)
+	var roundRobinBroker int32
+
+
+	currentPartitions, err := topic.Partitions()
+	if err != nil {
+		return err
+	}
+	for _, partition := range currentPartitions {
+		replicas := partition.Replicas
+		newReplicas := make([]int32, len(replicas))
+		for i, replica := range replicas {
+
+			if replica == removalBroker {
+				//reassign Broker via RoundRobin.
+				newReplicas[i] = roundRobinBroker
+				roundRobinBroker = cycleBrokers(validBrokers, roundRobinBroker)
+			} else {
+				newReplicas[i] = replica
+			}
+			partition.Replicas = newReplicas
+		}
+	}
+
+	if err = topic.validatePartitionAssignments(validBrokers, currentPartitions); err != nil {
+		fmt.Println("Error Validation PartitionAssignment:", err)
+		return err
+	}
+
+	partitionData, err := topic.marshalPartitions(currentPartitions)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	if err = kz.createOrUpdate(topic.metadataPath(), partitionData, false); err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	return nil
+}
+
 // DeleteTopic marks a kafka topic for deletion. Deleting a topic is asynchronous and
 // DeleteTopic will return before Kafka actually does the deletion.
 func (kz *Kazoo) DeleteTopic(name string) error {
