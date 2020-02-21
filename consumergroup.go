@@ -326,7 +326,7 @@ func (cg *Consumergroup) Topics() (TopicList, error) {
 
 // CommitOffset commits an offset to a group/topic/partition
 func (cg *Consumergroup) CommitOffset(topic string, partition int32, offset int64) error {
-	node := fmt.Sprintf("%s/consumers/%s/offsets/%s/%d", cg.kz.conf.Chroot, cg.Name, topic, partition)
+	node := fmt.Sprintf("%s/consumers/%s/%s/%s/%d", cg.kz.conf.Chroot, cg.Name, cg.kz.conf.OffsetsPath, topic, partition)
 	data := []byte(fmt.Sprintf("%d", offset))
 
 	_, stat, err := cg.kz.conn.Get(node)
@@ -345,7 +345,7 @@ func (cg *Consumergroup) CommitOffset(topic string, partition int32, offset int6
 
 // FetchOffset retrieves an offset to a group/topic/partition
 func (cg *Consumergroup) FetchOffset(topic string, partition int32) (int64, error) {
-	node := fmt.Sprintf("%s/consumers/%s/offsets/%s/%d", cg.kz.conf.Chroot, cg.Name, topic, partition)
+	node := fmt.Sprintf("%s/consumers/%s/%s/%s/%d", cg.kz.conf.Chroot, cg.Name, cg.kz.conf.OffsetsPath, topic, partition)
 	val, _, err := cg.kz.conn.Get(node)
 	if err == zk.ErrNoNode {
 		return -1, nil
@@ -369,14 +369,14 @@ func (cg *Consumergroup) FetchAllOffsets() (map[string]map[int32]int64, error) {
 
 	for _, topic := range topics {
 		result[topic] = make(map[int32]int64)
-		topicNode := fmt.Sprintf("%s/consumers/%s/offsets/%s", cg.kz.conf.Chroot, cg.Name, topic)
+		topicNode := fmt.Sprintf("%s/consumers/%s/%s/%s", cg.kz.conf.Chroot, cg.Name, cg.kz.conf.OffsetsPath, topic)
 		partitions, _, err := cg.kz.conn.Children(topicNode)
 		if err != nil {
 			return nil, err
 		}
 
 		for _, partition := range partitions {
-			partitionNode := fmt.Sprintf("%s/consumers/%s/offsets/%s/%s", cg.kz.conf.Chroot, cg.Name, topic, partition)
+			partitionNode := fmt.Sprintf("%s/consumers/%s/%s/%s/%s", cg.kz.conf.Chroot, cg.Name, cg.kz.conf.OffsetsPath, topic, partition)
 			val, _, err := cg.kz.conn.Get(partitionNode)
 			if err != nil {
 				return nil, err
@@ -409,14 +409,14 @@ func (cg *Consumergroup) ResetOffsets() error {
 	}
 
 	for _, topic := range topics {
-		topicNode := fmt.Sprintf("%s/consumers/%s/offsets/%s", cg.kz.conf.Chroot, cg.Name, topic)
+		topicNode := fmt.Sprintf("%s/consumers/%s/%s/%s", cg.kz.conf.Chroot, cg.Name, cg.kz.conf.OffsetsPath, topic)
 		partitions, stat, err := cg.kz.conn.Children(topicNode)
 		if err != nil {
 			return err
 		}
 
 		for _, partition := range partitions {
-			partitionNode := fmt.Sprintf("%s/consumers/%s/offsets/%s/%s", cg.kz.conf.Chroot, cg.Name, topic, partition)
+			partitionNode := fmt.Sprintf("%s/consumers/%s/%s/%s/%s", cg.kz.conf.Chroot, cg.Name, cg.kz.conf.OffsetsPath, topic, partition)
 			exists, stat, err := cg.kz.conn.Exists(partitionNode)
 			if exists {
 				if err = cg.kz.conn.Delete(partitionNode, stat.Version); err != nil {

@@ -55,11 +55,17 @@ type Config struct {
 	// The amount of time the Zookeeper client can be disconnected from the Zookeeper cluster
 	// before the cluster will get rid of watches and ephemeral nodes. Defaults to 1 second.
 	Timeout time.Duration
+
+	// The path where the offsets is committed
+	OffsetsPath string
 }
 
 // NewConfig instantiates a new Config struct with sane defaults.
 func NewConfig() *Config {
-	return &Config{Timeout: 1 * time.Second}
+	return &Config{
+		Timeout:     1 * time.Second,
+		OffsetsPath: "offsets",
+	}
 }
 
 // NewKazoo creates a new connection instance
